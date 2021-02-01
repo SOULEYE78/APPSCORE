@@ -1,0 +1,66 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-rabittmq
+spec:
+  selector:
+    app: rabitmq-pod
+  ports:
+    - name: port5672
+      protocol: TCP
+      port: 5672
+      targetPort: 5672
+    - name: port15672
+      protocol: TCP
+      port: 15672
+      targetPort: 15672
+  type: ClusterIP  
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabitmq-deployment
+  labels:
+    app: rabitmq
+spec:
+  serviceName: rabbitmq
+  replicas: 2
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: rabitmq-pod
+  template:
+    metadata:
+      labels:
+        app: rabitmq-pod
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: rabitmq-cont
+        image: rabbitmq:3-management
+        resources:
+           limits:
+             cpu: 1000m
+             memory: 1000Mi
+           requests:
+             cpu: 100m
+             memory: 200Mi
+        ports:
+        - name: port5672
+          containerPort: 5672
+        - name: port15672
+          containerPort: 15672
+        volumeMounts:
+          - name: rabbitmq-persistent-storage
+            mountPath: /var/lib/rabbitmq
+  volumeClaimTemplates:
+  - metadata:
+      name: rabbitmq-persistent-storage
+      annotations:
+        volume.beta.kubernetes.io/storage-class: standard
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 1Gi
